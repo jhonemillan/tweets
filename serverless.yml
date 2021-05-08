@@ -1,0 +1,88 @@
+service: prueba-dynamo
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  apiGateway:
+    shouldStartNameWithService: true
+  memorySize: 2048
+  region: sa-east-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - dynamodb: "DescribeTable"
+        - dynamodb: "Scan"
+        - dynamodb: "GetItem"
+        - dynamodb: "PutItem"
+        - dynamodb: "UpdateItem"
+        - dynamodb: "DeleteItem"
+      Resource:
+        - "arn:aws:dynamodb:${self:provider.region}:*table/profile"
+  environment:
+    CONSUMER_KEY: ${self:custom.CONSUMER_KEY}
+    CONSUMER_SECRET: ${self:custom.CONSUMER_SECRET}
+    ACCESS_TOKEN_KEY: ${self:custom.ACCESS_TOKEN_KEY}
+    ACCESS_TOKEN_SECRET: ${self:custom.ACCESS_TOKEN_SECRET}
+    
+package:
+  exclude:
+    - node_modules/typescript/**
+    - node_modules/@types/**
+  include:
+    - .env
+    - dist/
+
+functions:
+  main:
+    handler: src/serverless.handler
+    timeout: 30
+    events:
+      - http:
+          path: '{proxy+}'
+          method: any
+          cors: true
+
+  getprofile:
+    handler: src/twitter/profile.getdata
+    timeout: 30
+    events:
+      - http:
+          path: twitter/profile
+          method: get
+  
+  updateprofile:
+    handler: src/twitter/profile.putdata
+    timeout: 30
+    events:
+      - http:
+          path: twitter/profile
+          method: post
+
+resources:
+  Resources:
+    ProfileTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+        KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+custom:  
+  CONSUMER_KEY: KRy7l0v8wex3w8Sy5zThai3Ea
+  CONSUMER_SECRET: X2eBm0Y21kYEuR74W3Frqc2JVIizOj8Q1EVGatDsEVVEJo0ucu
+  ACCESS_TOKEN_KEY: 1220032047516921859-otvXjhExyUTZ5GLxssc9h5ORqtPZja
+  ACCESS_TOKEN_SECRET: tmJKqM4ORfQW6CH7wIVV8uKNpmSEmeFAP8lYwGb19uYjj
+  serverless-offline:
+    httpPort: 3007
+ 
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-local-schedule
